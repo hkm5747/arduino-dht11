@@ -1,107 +1,166 @@
+#include <DHT.h>  // 라이브러리에서 DHT 추가
 #include <TimerOne.h>
-#include "DHT.h"     // DHT.h 라이브러리를 포함한다
 
-int count = 0;
-int count2 = 0;
-int count3 = 0;
+#define DHTPIN 5     // DHT 센서 데이터선을 디지털핀에 연결
+#define DHTTYPE DHT11 // DHT 센서 정의
 
-#define DHTPIN 2      // DHT핀을 2번으로 정의한다(DATA핀)
-#define DHTPIN2 3
-#define DHTPIN3 4
+#define DHTPIN2 4
+#define DHTTYPE2 DHT11
 
-#define DHTTYPE DHT11  // DHT타입을 DHT11로 정의한다
+#define DHTPIN3 3
+#define DHTTYPE3 DHT11
 
-DHT dht(DHTPIN, DHTTYPE);  // DHT설정 - dht (디지털2, dht11)
-DHT dht2(DHTPIN2, DHTTYPE);
-DHT dht3(DHTPIN3, DHTTYPE);
+#include <Wire.h>                     // i2C 통신을 위한 라이브러리
+#include <LiquidCrystal_I2C.h>        // LCD 2004 I2C용 라이브러리
+
+LiquidCrystal_I2C lcd(0x27,16,2);
+LiquidCrystal_I2C lcd2(0x26,16,2);
+LiquidCrystal_I2C lcd3(0x25,16,2); 
+
+
+int Count = 0;
+int Count2 = 0;
+int Count3 = 0;
+
+void point1second(void);
+void point2second(void);
+void point3second(void);
+
+DHT dht(DHTPIN, DHTTYPE);
+DHT dht2(DHTPIN2, DHTTYPE2);
+DHT dht3(DHTPIN3, DHTTYPE3);
 
 void setup() {
+  Serial.begin(9600); 
 
-Serial.begin(9600);    // 9600 속도로 시리얼 통신을 시작한다
-dht.begin(); //DHT 초기화
-Timer1.initialize(100000); //타이머 간격 100000us = 100ms = 0.1 sec
-Timer1.attachInterrupt( timerIsr ); // 타이머 간격대로 timerIsr 함수 실행
+  lcd.init();
+  lcd2.init();
+  lcd3.init();
+  lcd.backlight();
+  lcd2.backlight();
+  lcd3.backlight();
+  
+  dht.begin();  // DHT 센서 연결
+  dht2.begin();
+  dht3.begin();
+
+  pinMode(13, OUTPUT);
+  pinMode(12, OUTPUT);
+  pinMode(11, OUTPUT);
+
+  Timer1.initialize(10000); //타이머 간격 100000us = 100ms = 0.1 sec
+  Timer1.attachInterrupt( timerIsr ); // 타이머 간격대로 timerIsr 함수 실행
 
 }
 
 void loop() {
-
+  int h = dht.readHumidity(); // DHT 센서에서 습도데이터 읽기
+  int t = dht.readTemperature();  // DHT 센서에서 온도데이터 읽기
+  int h2 = dht2.readHumidity(); // DHT 센서에서 습도데이터 읽기
+  int t2 = dht2.readTemperature();  // DHT 센서에서 온도데이터 읽기
+  int h3 = dht3.readHumidity(); // DHT 센서에서 습도데이터 읽기
+  int t3 = dht3.readTemperature();  // DHT 센서에서 온도데이터 읽기
+  
+  lcd.setCursor(0,0);
+  lcd.print("temp : ");
+  lcd.print(t);
+  lcd.print("°C");
+  
+  lcd2.setCursor(0,0);
+  lcd2.print("temp : ");
+  lcd2.print(t2);
+  lcd.print("°C");
+  
+  lcd3.setCursor(0,0);
+  lcd3.print("temp : ");
+  lcd3.print(t3);
+  lcd.print("°C");
 }
 
 void timerIsr()
 {
-   if(count == 10)
+  Count++;
+  Count2++;
+  Count3++;
+  if( Count == 100 ) // 10개 카운트 되면 point1second 로 감 ( 100ms ) 
   {
-    count = 0;
+    Count = 0;
     point1second();
   }
   
-  if(count2 == 20)
+  if( Count2 == 100 ) // 20개 카운트 되면 point2second 로 감 ( 200ms ) 
   {
-    count2 = 0;
+    Count2 = 0;
     point2second();
   }
-  
-  if(count3 == 30)
+
+  if( Count3 == 100 ) // 30개 카운트 되면 point3second 로 감 ( 300ms ) 
   {
-    count3 == 30;
+    Count3 = 0;
     point3second();
   }
 }
 
 void point1second()
 {
-  int h = dht.readHumidity();  // 변수 h에 습도 값을 저장 
+  int t = dht.readTemperature();  // DHT 센서에서 온도데이터 읽기
 
-  int t = dht.readTemperature();  // 변수 t에 온도 값을 저장
+  // 데이터가 없을 때 처리하는 방식 
+  // 습도 혹은 온도 데이터가 nan 일때 출력되는 메시지
+  if (isnan(t)) {              
+    Serial.println(F("센서와 연결되지 않았습니다"));
+    return;
+  }
 
-  Serial.print("Humidity1: ");  // 문자열 Humidity: 를 출력한다.
+  if(t < 30){
+    digitalWrite(13, HIGH);
+    Serial.println("LED1 : on");
+  }
+  else if(t > 30){
+    digitalWrite(13, LOW);
+    Serial.println("LED1 : off");
+  }
 
-  Serial.print(h);  // 변수 h(습도)를 출력한다.
-
-  Serial.print("%\t");  // %를 출력한다
-
-  Serial.print("Temperature1: ");  // 이하생략
-
-  Serial.print(t);
-
-  Serial.println(" C");
 }
 
 void point2second()
 {
-  int h2 = dht.readHumidity();  // 변수 h에 습도 값을 저장 
+  int t2 = dht2.readTemperature();  // DHT 센서에서 온도데이터 읽기
 
-  int t2 = dht.readTemperature();  // 변수 t에 온도 값을 저장
+  // 데이터가 없을 때 처리하는 방식 
+  // 습도 혹은 온도 데이터가 nan 일때 출력되는 메시지
+  if (isnan(t2)) {              
+    Serial.println(F("센서와 연결되지 않았습니다"));
+    return;
+  }
 
-  Serial.print("Humidity2: ");  // 문자열 Humidity: 를 출력한다.
-
-  Serial.print(h2);  // 변수 h(습도)를 출력한다.
-
-  Serial.print("%\t");  // %를 출력한다
-
-  Serial.print("Temperature2: ");  // 이하생략
-
-  Serial.print(t2);
-
-  Serial.println(" C");
+  if(t2 < 30){
+    digitalWrite(12, HIGH);
+    Serial.println("LED2 : on");
+  }
+  else if(t2 > 30){
+    digitalWrite(12, LOW);
+    Serial.println("LED2 : off");
+  }
 }
 
 void point3second()
 {
-  int h3 = dht.readHumidity();  // 변수 h에 습도 값을 저장 
+  int t3 = dht3.readTemperature();  // DHT 센서에서 온도데이터 읽기
 
-  int t3 = dht.readTemperature();  // 변수 t에 온도 값을 저장
+  // 데이터가 없을 때 처리하는 방식 
+  // 습도 혹은 온도 데이터가 nan 일때 출력되는 메시지
+  if (isnan(t3)) {              
+    Serial.println(F("센서와 연결되지 않았습니다"));
+    return;
+  }
 
-  Serial.print("Humidity3: ");  // 문자열 Humidity: 를 출력한다.
-
-  Serial.print(h3);  // 변수 h(습도)를 출력한다.
-
-  Serial.print("%\t");  // %를 출력한다
-
-  Serial.print("Temperature3: ");  // 이하생략
-
-  Serial.print(t3);
-
-  Serial.println(" C");
+  if(t3 < 30){
+    digitalWrite(11, HIGH);
+    Serial.println("LED3 : on\n\n");
+  }
+  else if(t3 > 30){
+    digitalWrite(11, LOW);
+    Serial.println("LED3 : off\n\n");
+  }
 }
